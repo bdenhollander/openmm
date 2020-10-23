@@ -367,7 +367,7 @@ void OpenCLNonbondedUtilities::prepareInteractions(int forceGroups) {
     kernels.sortBoxDataKernel.setArg<cl_int>(9, forceRebuildNeighborList);
     context.executeKernel(kernels.sortBoxDataKernel, context.getNumAtoms());
     setPeriodicBoxArgs(context, kernels.findInteractingBlocksKernel, 0);
-    context.executeKernel(kernels.findInteractingBlocksKernel, context.getNumAtoms(), interactingBlocksThreadBlockSize);
+    context.executeKernel(kernels.findInteractingBlocksKernel, context.getNumAtoms()*64, interactingBlocksThreadBlockSize, 2);
     forceRebuildNeighborList = false;
     lastCutoff = kernels.cutoffDistance;
     context.getQueue().enqueueReadBuffer(interactionCount.getDeviceBuffer(), CL_FALSE, 0, sizeof(int), pinnedCountMemory, NULL, &downloadCountEvent); 
