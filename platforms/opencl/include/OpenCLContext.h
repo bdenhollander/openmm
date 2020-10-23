@@ -319,7 +319,7 @@ public:
      * @param workUnits    the maximum number of work units that should be used
      * @param blockSize    the size of each thread block to use
      */
-    void executeKernel(cl::Kernel& kernel, int workUnits, int blockSize = -1);
+    void executeKernel(cl::Kernel& kernel, int workUnits, int blockSize = -1, int multiplier = 1);
     /**
      * Set all elements of an array to 0.
      */

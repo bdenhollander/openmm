@@ -664,10 +664,10 @@ OpenCLArray& OpenCLContext::unwrap(ArrayInterface& array) const {
     return *clarray;
 }
 
-void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSize) {
+void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSize, int multiplier) {
     if (blockSize == -1)
         blockSize = ThreadBlockSize;
-    int size = std::min((workUnits+blockSize-1)/blockSize, numThreadBlocks)*blockSize;
+    int size = std::min((workUnits+blockSize-1)/blockSize, numThreadBlocks*multiplier)*blockSize;
     try {
         currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize));
     }

@@ -79,7 +79,7 @@ OpenCLNonbondedUtilities::OpenCLNonbondedUtilities(OpenCLContext& context) : con
         }
     }
     else {
-        numForceThreadBlocks = context.getNumThreadBlocks();
+        numForceThreadBlocks = context.getNumThreadBlocks()*4;
         forceThreadBlockSize = (context.getSIMDWidth() >= 32 ? OpenCLContext::ThreadBlockSize : 32);
         if (context.getSupports64BitGlobalAtomics()) {
             // Even though using longForceBuffer, still need a single forceBuffer for the reduceForces kernel to convert the long results into float4 which will be used by later kernels.
@@ -383,7 +383,7 @@ void OpenCLNonbondedUtilities::computeInteractions(int forceGroups, bool include
             kernel = createInteractionKernel(kernels.source, parameters, arguments, true, true, forceGroups, includeForces, includeEnergy);
         if (useCutoff)
             setPeriodicBoxArgs(context, kernel, 9);
-        context.executeKernel(kernel, numForceThreadBlocks*forceThreadBlockSize, forceThreadBlockSize);
+        context.executeKernel(kernel, numForceThreadBlocks*forceThreadBlockSize, forceThreadBlockSize, 4);
     }
     if (useCutoff && numTiles > 0) {
         downloadCountEvent.wait();
