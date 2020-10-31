@@ -318,6 +318,7 @@ public:
      * @param kernel       the kernel to execute
      * @param workUnits    the maximum number of work units that should be used
      * @param blockSize    the size of each thread block to use
+     * @param multiplier   use a multiple of numThreadBlocks to increase minimum wavefronts
      */
     void executeKernel(cl::Kernel& kernel, int workUnits, int blockSize = -1, int multiplier = 1);
     /**
@@ -445,6 +446,12 @@ public:
      */
     int getNumForceBuffers() const {
         return numForceBuffers;
+    }
+    /**
+    * Get the force thread blocks multiplier.
+    */
+    int getForceThreadBlocksMultiplier() const {
+        return forceThreadBlocksMultiplier;
     }
     /**
      * Get whether the device being used is a CPU.  In some cases, different algorithms
@@ -646,6 +653,7 @@ private:
     int numAtomBlocks;
     int numThreadBlocks;
     int numForceBuffers;
+    int forceThreadBlocksMultiplier;
     int simdWidth;
     bool supports64BitGlobalAtomics, supportsDoublePrecision, useDoublePrecision, useMixedPrecision, boxIsTriclinic, hasAssignedPosqCharges;
     mm_float4 periodicBoxSize, invPeriodicBoxSize, periodicBoxVecX, periodicBoxVecY, periodicBoxVecZ;

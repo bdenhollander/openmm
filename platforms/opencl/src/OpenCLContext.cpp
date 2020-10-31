@@ -211,6 +211,7 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
             throw OpenMMException("This device does not support double precision");
         string vendor = device.getInfo<CL_DEVICE_VENDOR>();
         int numThreadBlocksPerComputeUnit = 6;
+        forceThreadBlocksMultiplier = 1;
         if (vendor.size() >= 6 && vendor.substr(0, 6) == "NVIDIA") {
             compilationDefines["WARPS_ARE_ATOMIC"] = "";
             simdWidth = 32;
@@ -255,10 +256,14 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
                         // set instead of the VLIW instruction set. It therefore needs more thread blocks per
                         // compute unit to hide memory latency.
                         if (simdPerComputeUnit > 1) {
-                            if (simdWidth == 32)
+                            if (simdWidth == 32) {
                                 numThreadBlocksPerComputeUnit = 6*simdPerComputeUnit; // Navi seems to like more thread blocks than older GPUs
-                            else
+                                forceThreadBlocksMultiplier = 2;
+                            }
+                            else {
                                 numThreadBlocksPerComputeUnit = 4*simdPerComputeUnit;
+                                forceThreadBlocksMultiplier = 4;
+                            }
                         }
 
                         // If the queries are supported then must be newer than SDK 2.4.

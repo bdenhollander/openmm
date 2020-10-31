@@ -59,6 +59,7 @@ OpenCLNonbondedUtilities::OpenCLNonbondedUtilities(OpenCLContext& context) : con
         numForceBuffers(0), blockSorter(NULL), pinnedCountBuffer(NULL), pinnedCountMemory(NULL), forceRebuildNeighborList(true), lastCutoff(0.0), groupFlags(0) {
     // Decide how many thread blocks and force buffers to use.
 
+    forceThreadBlocksMultiplier = context.getForceThreadBlocksMultiplier();
     deviceIsCpu = (context.getDevice().getInfo<CL_DEVICE_TYPE>() == CL_DEVICE_TYPE_CPU);
     if (deviceIsCpu) {
         numForceThreadBlocks = context.getNumThreadBlocks();
@@ -79,7 +80,7 @@ OpenCLNonbondedUtilities::OpenCLNonbondedUtilities(OpenCLContext& context) : con
         }
     }
     else {
-        numForceThreadBlocks = context.getNumThreadBlocks()*4;
+        numForceThreadBlocks = context.getNumThreadBlocks()*forceThreadBlocksMultiplier;
         forceThreadBlockSize = (context.getSIMDWidth() >= 32 ? OpenCLContext::ThreadBlockSize : 32);
         if (context.getSupports64BitGlobalAtomics()) {
             // Even though using longForceBuffer, still need a single forceBuffer for the reduceForces kernel to convert the long results into float4 which will be used by later kernels.
@@ -367,7 +368,7 @@ void OpenCLNonbondedUtilities::prepareInteractions(int forceGroups) {
     kernels.sortBoxDataKernel.setArg<cl_int>(9, forceRebuildNeighborList);
     context.executeKernel(kernels.sortBoxDataKernel, context.getNumAtoms());
     setPeriodicBoxArgs(context, kernels.findInteractingBlocksKernel, 0);
-    context.executeKernel(kernels.findInteractingBlocksKernel, context.getNumAtoms()*64, interactingBlocksThreadBlockSize, 2);
+    context.executeKernel(kernels.findInteractingBlocksKernel, context.getNumAtoms(), interactingBlocksThreadBlockSize);
     forceRebuildNeighborList = false;
     lastCutoff = kernels.cutoffDistance;
     context.getQueue().enqueueReadBuffer(interactionCount.getDeviceBuffer(), CL_FALSE, 0, sizeof(int), pinnedCountMemory, NULL, &downloadCountEvent); 
@@ -383,7 +384,7 @@ void OpenCLNonbondedUtilities::computeInteractions(int forceGroups, bool include
             kernel = createInteractionKernel(kernels.source, parameters, arguments, true, true, forceGroups, includeForces, includeEnergy);
         if (useCutoff)
             setPeriodicBoxArgs(context, kernel, 9);
-        context.executeKernel(kernel, numForceThreadBlocks*forceThreadBlockSize, forceThreadBlockSize, 4);
+        context.executeKernel(kernel, numForceThreadBlocks*forceThreadBlockSize, forceThreadBlockSize, forceThreadBlocksMultiplier);
     }
     if (useCutoff && numTiles > 0) {
         downloadCountEvent.wait();
