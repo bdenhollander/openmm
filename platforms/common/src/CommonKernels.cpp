@@ -5401,12 +5401,6 @@ void CommonIntegrateVerletStepKernel::execute(ContextImpl& context, const Verlet
     cc.setTime(cc.getTime()+dt);
     cc.setStepCount(cc.getStepCount()+1);
     cc.reorderAtoms();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 double CommonIntegrateVerletStepKernel::computeKineticEnergy(ContextImpl& context, const VerletIntegrator& integrator) {
@@ -5488,12 +5482,6 @@ void CommonIntegrateLangevinStepKernel::execute(ContextImpl& context, const Lang
     cc.setTime(cc.getTime()+stepSize);
     cc.setStepCount(cc.getStepCount()+1);
     cc.reorderAtoms();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 double CommonIntegrateLangevinStepKernel::computeKineticEnergy(ContextImpl& context, const LangevinIntegrator& integrator) {
@@ -5582,12 +5570,6 @@ void CommonIntegrateLangevinMiddleStepKernel::execute(ContextImpl& context, cons
     cc.setTime(cc.getTime()+stepSize);
     cc.setStepCount(cc.getStepCount()+1);
     cc.reorderAtoms();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 double CommonIntegrateLangevinMiddleStepKernel::computeKineticEnergy(ContextImpl& context, const LangevinMiddleIntegrator& integrator) {
@@ -5775,11 +5757,6 @@ void CommonIntegrateNoseHooverStepKernel::execute(ContextImpl& context, const No
     cc.setTime(cc.getTime()+dt);
     cc.setStepCount(cc.getStepCount()+1);
     cc.reorderAtoms();
-
-    // Reduce UI lag.
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 double CommonIntegrateNoseHooverStepKernel::computeKineticEnergy(ContextImpl& context, const NoseHooverIntegrator& integrator) {
@@ -6338,12 +6315,6 @@ void CommonIntegrateBrownianStepKernel::execute(ContextImpl& context, const Brow
     cc.setTime(cc.getTime()+stepSize);
     cc.setStepCount(cc.getStepCount()+1);
     cc.reorderAtoms();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 double CommonIntegrateBrownianStepKernel::computeKineticEnergy(ContextImpl& context, const BrownianIntegrator& integrator) {
@@ -6421,12 +6392,6 @@ double CommonIntegrateVariableVerletStepKernel::execute(ContextImpl& context, co
 
     kernel2->execute(numAtoms);
     integration.computeVirtualSites();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 
     // Update the time and step count.
 
@@ -6530,12 +6495,6 @@ double CommonIntegrateVariableLangevinStepKernel::execute(ContextImpl& context, 
 
     kernel2->execute(numAtoms);
     integration.computeVirtualSites();
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 
     // Update the time and step count.
 
@@ -7307,12 +7266,6 @@ void CommonIntegrateCustomStepKernel::execute(ContextImpl& context, CustomIntegr
         forcesAreValid = false;
         validSavedForces.clear();
     }
-    
-    // Reduce UI lag.
-    
-#ifdef WIN32
-    cc.flushQueue();
-#endif
 }
 
 bool CommonIntegrateCustomStepKernel::evaluateCondition(int step) {

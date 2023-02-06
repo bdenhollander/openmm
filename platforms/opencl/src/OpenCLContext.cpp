@@ -78,7 +78,7 @@ static bool isSupported(cl::Platform platform) {
 }
 
 OpenCLContext::OpenCLContext(const System& system, int platformIndex, int deviceIndex, const string& precision, OpenCLPlatform::PlatformData& platformData, OpenCLContext* originalContext) :
-        ComputeContext(system), platformData(platformData), numForceBuffers(0), hasAssignedPosqCharges(false),
+        ComputeContext(system), platformData(platformData), numForceBuffers(0), supportsSvm(false), hasAssignedPosqCharges(false),
         integration(NULL), expression(NULL), bonded(NULL), nonbonded(NULL), pinnedBuffer(NULL) {
     if (precision == "single") {
         useDoublePrecision = false;
@@ -171,6 +171,11 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
                     catch (cl::Error err) {
                         // Runtime does not support the queries so use default.
                     }
+#ifndef USE_OPENCL_120
+                    cl_device_svm_capabilities caps;
+                    cl_int status = clGetDeviceInfo(devices[i](), CL_DEVICE_SVM_CAPABILITIES, sizeof(cl_device_svm_capabilities), &caps, NULL);
+                    supportsSvm = status == CL_SUCCESS && (caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER);
+#endif
                 }
                 int speed = devices[i].getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>()*processingElementsPerComputeUnit*devices[i].getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
                 if (maxSize >= minThreadBlockSize && (speed > bestSpeed || (supported && !bestSupported))) {
@@ -670,12 +675,12 @@ OpenCLArray& OpenCLContext::unwrap(ArrayInterface& array) const {
     return *clarray;
 }
 
-void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSize) {
+void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSize, cl::Event* kernelEvent) {
     if (blockSize == -1)
         blockSize = ThreadBlockSize;
     int size = std::min((workUnits+blockSize-1)/blockSize, numThreadBlocks)*blockSize;
     try {
-        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize));
+        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), NULL, kernelEvent);
     }
     catch (cl::Error err) {
         stringstream str;

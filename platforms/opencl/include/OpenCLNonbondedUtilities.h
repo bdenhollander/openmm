@@ -330,7 +330,7 @@ private:
     std::map<int, double> groupCutoff;
     std::map<int, std::string> groupKernelSource;
     double lastCutoff;
-    bool useCutoff, usePeriodic, deviceIsCpu, anyExclusions, usePadding, forceRebuildNeighborList;
+    bool useCutoff, usePeriodic, useSvm, deviceIsCpu, anyExclusions, usePadding, forceRebuildNeighborList;
     int startTileIndex, startBlockIndex, numBlocks, maxExclusions, numForceThreadBlocks;
     int forceThreadBlockSize, interactingBlocksThreadBlockSize, groupFlags;
     unsigned int tilesAfterReorder;

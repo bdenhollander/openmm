@@ -30,8 +30,13 @@
 #include <map>
 #include <string>
 #define CL_HPP_ENABLE_EXCEPTIONS
-#define CL_HPP_TARGET_OPENCL_VERSION 120
-#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#ifndef USE_OPENCL_120
+  #define CL_HPP_TARGET_OPENCL_VERSION 200
+  #define CL_HPP_MINIMUM_OPENCL_VERSION 200
+#else
+  #define CL_HPP_TARGET_OPENCL_VERSION 120
+  #define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#endif
 #ifndef CL_DEVICE_SIMD_PER_COMPUTE_UNIT_AMD
   #define CL_DEVICE_SIMD_PER_COMPUTE_UNIT_AMD 0x4040
 #endif
@@ -326,8 +331,9 @@ public:
      * @param kernel       the kernel to execute
      * @param workUnits    the maximum number of work units that should be used
      * @param blockSize    the size of each thread block to use
+     * @param kernelEvent  optional event to track kernel status
      */
-    void executeKernel(cl::Kernel& kernel, int workUnits, int blockSize = -1);
+    void executeKernel(cl::Kernel& kernel, int workUnits, int blockSize = -1, cl::Event* kernelEvent = NULL);
     /**
      * Compute the largest thread block size that can be used for a kernel that requires a particular amount of
      * shared memory per thread.
@@ -507,6 +513,12 @@ public:
         return boxIsTriclinic;
     }
     /**
+     * Get whether the device being used supports shared virtual memory.
+     */
+    bool getSupportsSvm() const {
+        return supportsSvm;
+    }
+    /**
      * Get the vectors defining the periodic box.
      */
     void getPeriodicBoxVectors(Vec3& a, Vec3& b, Vec3& c) const {
@@ -673,7 +685,7 @@ private:
     int numThreadBlocks;
     int numForceBuffers;
     int simdWidth;
-    bool supports64BitGlobalAtomics, supportsDoublePrecision, useDoublePrecision, useMixedPrecision, boxIsTriclinic, hasAssignedPosqCharges;
+    bool supports64BitGlobalAtomics, supportsDoublePrecision, useDoublePrecision, useMixedPrecision, supportsSvm, boxIsTriclinic, hasAssignedPosqCharges;
     mm_float4 periodicBoxSize, invPeriodicBoxSize, periodicBoxVecX, periodicBoxVecY, periodicBoxVecZ;
     mm_double4 periodicBoxSizeDouble, invPeriodicBoxSizeDouble, periodicBoxVecXDouble, periodicBoxVecYDouble, periodicBoxVecZDouble;
     std::string defaultOptimizationOptions;
