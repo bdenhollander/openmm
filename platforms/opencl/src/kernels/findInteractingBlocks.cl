@@ -84,7 +84,11 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
         __global const real4* restrict posq, unsigned int maxTiles, unsigned int startBlockIndex, unsigned int numBlocks, __global real2* restrict sortedBlocks,
         __global const real4* restrict sortedBlockCenter, __global const real4* restrict sortedBlockBoundingBox,
         __global const unsigned int* restrict exclusionIndices, __global const unsigned int* restrict exclusionRowIndices, __global real4* restrict oldPositions,
-        __global const int* restrict rebuildNeighborList) {
+        __global const int* restrict rebuildNeighborList
+#ifdef USE_SVM
+        , __global unsigned int* pinnedCount
+#endif
+        ) {
 
     if (rebuildNeighborList[0] == 0)
         return; // The neighbor list doesn't need to be rebuilt.
@@ -276,6 +280,10 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
     
     for (int i = get_global_id(0); i < NUM_ATOMS; i += get_global_size(0))
         oldPositions[i] = posq[i];
+
+#ifdef USE_SVM
+        pinnedCount[0] = interactionCount[0];
+#endif
 }
 
 #else
@@ -458,7 +466,11 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
         __global const real4* restrict posq, unsigned int maxTiles, unsigned int startBlockIndex, unsigned int numBlocks, __global real2* restrict sortedBlocks,
         __global const real4* restrict sortedBlockCenter, __global const real4* restrict sortedBlockBoundingBox,
         __global const unsigned int* restrict exclusionIndices, __global const unsigned int* restrict exclusionRowIndices, __global real4* restrict oldPositions,
-        __global const int* restrict rebuildNeighborList) {
+        __global const int* restrict rebuildNeighborList
+#ifdef USE_SVM
+        , __global unsigned int* pinnedCount
+#endif
+) {
     __local int buffer[BUFFER_SIZE];
     __local int sum[BUFFER_SIZE];
     __local int2 temp[BUFFER_SIZE];
@@ -549,6 +561,10 @@ __kernel void findBlocksWithInteractions(real4 periodicBoxSize, real4 invPeriodi
     
     for (int i = get_global_id(0); i < NUM_ATOMS; i += get_global_size(0))
         oldPositions[i] = posq[i];
+
+#ifdef USE_SVM
+    pinnedCount[0] = interactionCount[0];
+#endif
 }
 
 #endif

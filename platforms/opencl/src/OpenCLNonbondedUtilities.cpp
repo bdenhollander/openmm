@@ -496,6 +496,7 @@ void OpenCLNonbondedUtilities::createKernelsForGroups(int groups) {
         defines["NUM_TILES_WITH_EXCLUSIONS"] = context.intToString(exclusionTiles.getSize());
         defines["NUM_BLOCKS"] = context.intToString(context.getNumAtomBlocks());
         defines["SIMD_WIDTH"] = context.intToString(context.getSIMDWidth());
+        defines["USE_SVM"] = useSvm;
         if (usePeriodic)
             defines["USE_PERIODIC"] = "1";
         if (context.getBoxIsTriclinic())
@@ -540,6 +541,8 @@ void OpenCLNonbondedUtilities::createKernelsForGroups(int groups) {
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(16, exclusionRowIndices.getDeviceBuffer());
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(17, oldPositions.getDeviceBuffer());
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(18, rebuildNeighborList.getDeviceBuffer());
+            if (useSvm)
+                kernels.findInteractingBlocksKernel.setArg<unsigned int*>(19, pinnedCountMemory);
             if (kernels.findInteractingBlocksKernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(context.getDevice()) < groupSize) {
                 // The device can't handle this block size, so reduce it.
 
