@@ -522,17 +522,11 @@ void OpenCLNonbondedUtilities::createKernelsForGroups(int groups) {
             kernels.sortBoxDataKernel.setArg<cl::Buffer>(4, sortedBlockBoundingBox.getDeviceBuffer());
             kernels.sortBoxDataKernel.setArg<cl::Buffer>(5, context.getPosq().getDeviceBuffer());
             kernels.sortBoxDataKernel.setArg<cl::Buffer>(6, oldPositions.getDeviceBuffer());
-            if (!useSvm)
-                kernels.sortBoxDataKernel.setArg<cl::Buffer>(7, interactionCount.getDeviceBuffer());
-            else
-                kernels.sortBoxDataKernel.setArg<unsigned int*>(7, pinnedCountMemory);
+            kernels.sortBoxDataKernel.setArg<cl::Buffer>(7, interactionCount.getDeviceBuffer());
             kernels.sortBoxDataKernel.setArg<cl::Buffer>(8, rebuildNeighborList.getDeviceBuffer());
             kernels.sortBoxDataKernel.setArg<cl_int>(9, true);
             kernels.findInteractingBlocksKernel = cl::Kernel(interactingBlocksProgram, "findBlocksWithInteractions");
-            if (!useSvm)
-                kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(5, interactionCount.getDeviceBuffer());
-            else
-                kernels.findInteractingBlocksKernel.setArg<unsigned int*>(5, pinnedCountMemory);
+            kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(5, interactionCount.getDeviceBuffer());
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(6, interactingTiles.getDeviceBuffer());
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(7, interactingAtoms.getDeviceBuffer());
             kernels.findInteractingBlocksKernel.setArg<cl::Buffer>(8, context.getPosq().getDeviceBuffer());
@@ -738,10 +732,7 @@ cl::Kernel OpenCLNonbondedUtilities::createInteractionKernel(const string& sourc
     kernel.setArg<cl_ulong>(index++, numTiles);
     if (useCutoff) {
         kernel.setArg<cl::Buffer>(index++, interactingTiles.getDeviceBuffer());
-        if (!useSvm)
-            kernel.setArg<cl::Buffer>(index++, interactionCount.getDeviceBuffer());
-        else
-            kernel.setArg<unsigned int*>(index++, pinnedCountMemory);
+        kernel.setArg<cl::Buffer>(index++, interactionCount.getDeviceBuffer());
         index += 5; // The periodic box size arguments are set when the kernel is executed.
         kernel.setArg<cl_uint>(index++, interactingTiles.getSize());
         kernel.setArg<cl::Buffer>(index++, blockCenter.getDeviceBuffer());
