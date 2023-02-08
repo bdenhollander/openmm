@@ -216,6 +216,7 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
         string vendor = device.getInfo<CL_DEVICE_VENDOR>();
         int numThreadBlocksPerComputeUnit = 6;
       
+        int minThreadBlocksPerComputeUnit = numThreadBlocksPerComputeUnit;
         if (vendor.size() >= 5 && vendor.substr(0, 5) == "Apple") {
             simdWidth = 32;
         }
@@ -263,8 +264,10 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
                         // set instead of the VLIW instruction set. It therefore needs more thread blocks per
                         // compute unit to hide memory latency.
                         if (simdPerComputeUnit > 1) {
-                            if (simdWidth == 32)
+                            if (simdWidth == 32) {
                                 numThreadBlocksPerComputeUnit = 6*simdPerComputeUnit; // Navi seems to like more thread blocks than older GPUs
+                                minThreadBlocksPerComputeUnit = simdPerComputeUnit;
+                            }
                             else
                                 numThreadBlocksPerComputeUnit = 4*simdPerComputeUnit;
                         }
@@ -313,6 +316,7 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
         paddedNumAtoms = TileSize*((numAtoms+TileSize-1)/TileSize);
         numAtomBlocks = (paddedNumAtoms+(TileSize-1))/TileSize;
         numThreadBlocks = numThreadBlocksPerComputeUnit*device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+        numReducedThreadBlocks = minThreadBlocksPerComputeUnit*device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
         if (useDoublePrecision) {
             posq.initialize<mm_double4>(*this, paddedNumAtoms, "posq");
             velm.initialize<mm_double4>(*this, paddedNumAtoms, "velm");
