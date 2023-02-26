@@ -52,6 +52,10 @@
 using namespace OpenMM;
 using namespace std;
 
+// Uncomment the following line to enable profiling of all kernel launches.  The results are written
+// to stdout in the JSON format used by https://ui.perfetto.dev.
+//#define ENABLE_PROFILING
+
 #ifndef CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV
   #define CL_DEVICE_COMPUTE_CAPABILITY_MAJOR_NV 0x4000
 #endif
@@ -78,7 +82,7 @@ static bool isSupported(cl::Platform platform) {
 }
 
 OpenCLContext::OpenCLContext(const System& system, int platformIndex, int deviceIndex, const string& precision, OpenCLPlatform::PlatformData& platformData, OpenCLContext* originalContext) :
-        ComputeContext(system), platformData(platformData), numForceBuffers(0), supportsSvm(false), hasAssignedPosqCharges(false),
+        ComputeContext(system), platformData(platformData), numForceBuffers(0), supportsSvm(false), hasAssignedPosqCharges(false), profileStartTime(0),
         integration(NULL), expression(NULL), bonded(NULL), nonbonded(NULL), pinnedBuffer(NULL) {
     if (precision == "single") {
         useDoublePrecision = false;
@@ -219,6 +223,9 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
       
         if (vendor.size() >= 5 && vendor.substr(0, 5) == "Apple") {
             simdWidth = 32;
+
+            // 768 threads per GPU core.
+            numThreadBlocksPerComputeUnit = 12;
         }
         else if (vendor.size() >= 6 && vendor.substr(0, 6) == "NVIDIA") {
             compilationDefines["WARPS_ARE_ATOMIC"] = "";
@@ -298,7 +305,12 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
         cl_context_properties cprops[] = {CL_CONTEXT_PLATFORM, (cl_context_properties) platforms[bestPlatform](), 0};
         if (originalContext == NULL) {
             context = cl::Context(contextDevices, cprops, errorCallback);
+#ifdef ENABLE_PROFILING
+            defaultQueue = cl::CommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE);
+            printf("[ ");
+#else
             defaultQueue = cl::CommandQueue(context, device);
+#endif
         }
         else {
             context = originalContext->context;
@@ -500,6 +512,10 @@ OpenCLContext::~OpenCLContext() {
         delete bonded;
     if (nonbonded != NULL)
         delete nonbonded;
+#ifdef ENABLE_PROFILING
+    printProfilingEvents();
+    printf(" ]\n");
+#endif
 }
 
 void OpenCLContext::initialize() {
@@ -680,13 +696,39 @@ void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSi
         blockSize = ThreadBlockSize;
     int size = std::min((workUnits+blockSize-1)/blockSize, numThreadBlocks)*blockSize;
     try {
-        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), NULL, kernelEvent);
+#ifdef ENABLE_PROFILING
+    currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), NULL, kernelEvent);
+    profilingEvents.push_back(event);
+    profilingKernelNames.push_back(kernel.getInfo<CL_KERNEL_FUNCTION_NAME>());
+    if (profilingEvents.size() >= 500)
+        printProfilingEvents();
+#else
+        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), kernelEvent);
+#endif
     }
     catch (cl::Error err) {
         stringstream str;
         str<<"Error invoking kernel "<<kernel.getInfo<CL_KERNEL_FUNCTION_NAME>()<<": "<<err.what()<<" ("<<err.err()<<")";
         throw OpenMMException(str.str());
     }
+}
+
+void OpenCLContext::printProfilingEvents() {
+    for (int i = 0; i < profilingEvents.size(); i++) {
+        cl::Event event = profilingEvents[i];
+        event.wait();
+        cl_ulong start, end;
+        event.getProfilingInfo(CL_PROFILING_COMMAND_START, &start);
+        event.getProfilingInfo(CL_PROFILING_COMMAND_END, &end);
+        if (profileStartTime == 0)
+            profileStartTime = start;
+        else
+            printf(",\n");
+        printf("{ \"pid\":1, \"tid\":1, \"ts\":%.6g, \"dur\":%g, \"ph\":\"X\", \"name\":\"%s\" }",
+                0.001*(start-profileStartTime), 0.001*(end-start), profilingKernelNames[i].c_str());
+    }
+    profilingEvents.clear();
+    profilingKernelNames.clear();
 }
 
 int OpenCLContext::computeThreadBlockSize(double memory) const {
