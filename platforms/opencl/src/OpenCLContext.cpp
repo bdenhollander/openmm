@@ -703,7 +703,7 @@ void OpenCLContext::executeKernel(cl::Kernel& kernel, int workUnits, int blockSi
     if (profilingEvents.size() >= 500)
         printProfilingEvents();
 #else
-        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), kernelEvent);
+        currentQueue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(size), cl::NDRange(blockSize), NULL, kernelEvent);
 #endif
     }
     catch (cl::Error err) {
