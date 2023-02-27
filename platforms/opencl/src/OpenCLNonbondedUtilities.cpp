@@ -511,7 +511,8 @@ void OpenCLNonbondedUtilities::createKernelsForGroups(int groups) {
         defines["NUM_TILES_WITH_EXCLUSIONS"] = context.intToString(exclusionTiles.getSize());
         defines["NUM_BLOCKS"] = context.intToString(context.getNumAtomBlocks());
         defines["SIMD_WIDTH"] = context.intToString(context.getSIMDWidth());
-        defines["USE_SVM"] = useSvm;
+        if (useSvm)
+            defines["USE_SVM"] = "1";
         if (usePeriodic)
             defines["USE_PERIODIC"] = "1";
         if (context.getBoxIsTriclinic())
