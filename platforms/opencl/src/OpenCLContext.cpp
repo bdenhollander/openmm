@@ -267,7 +267,7 @@ OpenCLContext::OpenCLContext(const System& system, int platformIndex, int device
                         // compute unit to hide memory latency.
                         if (simdPerComputeUnit > 1) {
                             if (simdWidth == 32)
-                                numThreadBlocksPerComputeUnit = 4*simdPerComputeUnit; // Navi seems to like more thread blocks than older GPUs
+                                numThreadBlocksPerComputeUnit = 6*simdPerComputeUnit; // Navi seems to like more thread blocks than older GPUs
                             else
                                 numThreadBlocksPerComputeUnit = 4*simdPerComputeUnit;
                         }
