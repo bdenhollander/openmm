@@ -55,7 +55,7 @@ private:
     bool useDouble;
 };
 
-OpenCLNonbondedUtilities::OpenCLNonbondedUtilities(OpenCLContext& context) : context(context), useCutoff(false), usePeriodic(false), useNeighborList(false), anyExclusions(false), usePadding(true),
+OpenCLNonbondedUtilities::OpenCLNonbondedUtilities(OpenCLContext& context) : context(context), useCutoff(false), usePeriodic(false), useNeighborList(false), anyExclusions(false), usePadding(true), skipResizeNeighborList(false),
         blockSorter(NULL), pinnedCountBuffer(NULL), pinnedCountMemory(NULL), forceRebuildNeighborList(true), lastCutoff(0.0), groupFlags(0), tilesAfterReorder(0) {
     // Decide how many thread blocks and force buffers to use.
 
@@ -282,14 +282,25 @@ void OpenCLNonbondedUtilities::initialize(const System& system) {
     // Create data structures for the neighbor list.
 
     if (useCutoff) {
-        // Select a size for the arrays that hold the neighbor list.  We have to make a fairly
-        // arbitrary guess, but if this turns out to be too small we'll increase it later.
-
-        int maxTiles = 20*numAtomBlocks;
-        if (maxTiles > numTiles)
-            maxTiles = numTiles;
-        if (maxTiles < 1)
-            maxTiles = 1;
+        int maxTiles = numBlocks*(numBlocks + 1)/2;
+        unsigned long long gpuMemory = context.getDevice().getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
+        unsigned long long gpuMaxAlloc = context.getDevice().getInfo<CL_DEVICE_MAX_MEM_ALLOC_SIZE>();
+        unsigned long long maxMemoryForTiles = min(gpuMemory / 8, gpuMaxAlloc);
+        int interactionMemory = (maxTiles + OpenCLContext::TileSize * maxTiles) * sizeof(cl_int);
+        if (interactionMemory <= maxMemoryForTiles) {
+            std::cout << "CL_DEVICE_GLOBAL_MEM_SIZE " << gpuMemory / 1024.0 / 1024.0 << " CL_DEVICE_MAX_MEM_ALLOC_SIZE " << gpuMaxAlloc / 1024.0 / 1024.0 << " MB" << std::endl;
+            std::cout << "Allocating max tiles. Requires " << interactionMemory  / 1024.0 / 1024.0 << " of " << maxMemoryForTiles / 1024.0 / 1024.0 << " MB VRAM" << std::endl;
+            skipResizeNeighborList = true;
+        }
+        else {
+            // Select a size for the arrays that hold the neighbor list.  We have to make a fairly
+            // arbitrary guess, but if this turns out to be too small we'll increase it later.
+            maxTiles = 20*numAtomBlocks;
+            if (maxTiles > numTiles)
+                maxTiles = numTiles;
+            if (maxTiles < 1)
+                maxTiles = 1;
+        }
         int numAtoms = context.getNumAtoms();
         interactingTiles.initialize<cl_int>(context, maxTiles, "interactingTiles");
         interactingAtoms.initialize<cl_int>(context, OpenCLContext::TileSize*maxTiles, "interactingAtoms");
@@ -373,7 +384,9 @@ void OpenCLNonbondedUtilities::prepareInteractions(int forceGroups) {
     context.executeKernel(kernels.findInteractingBlocksKernel, context.getNumAtoms(), interactingBlocksThreadBlockSize);
     forceRebuildNeighborList = false;
     lastCutoff = kernels.cutoffDistance;
-    context.getQueue().enqueueReadBuffer(interactionCount.getDeviceBuffer(), CL_FALSE, 0, sizeof(int), pinnedCountMemory, NULL, &downloadCountEvent);
+    if (!skipResizeNeighborList) {
+        context.getQueue().enqueueReadBuffer(interactionCount.getDeviceBuffer(), CL_FALSE, 0, sizeof(int), pinnedCountMemory, NULL, &downloadCountEvent);
+    }
 
     #if __APPLE__ && defined(__aarch64__)
     // Segment the command stream to avoid stalls later.
@@ -394,7 +407,7 @@ void OpenCLNonbondedUtilities::computeInteractions(int forceGroups, bool include
             setPeriodicBoxArgs(context, kernel, 9);
         context.executeKernel(kernel, numForceThreadBlocks*forceThreadBlockSize, forceThreadBlockSize);
     }
-    if (useNeighborList && numTiles > 0) {
+    if (!skipResizeNeighborList && useNeighborList && numTiles > 0) {
         #if __APPLE__ && defined(__aarch64__)
         // Ensure cached up work executes while you're waiting.
         if (kernels.hasForces)
